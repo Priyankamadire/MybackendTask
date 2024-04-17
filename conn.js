@@ -9,7 +9,7 @@ console.log(process.env.POSTGRES_URL)
 //     user:"postgres",
 //     password:"123456",
 //     database:"MyProject"
-// })
+// }) 
 const client = new Client({
     connectionString: process.env.POSTGRES_URL ,
   })
