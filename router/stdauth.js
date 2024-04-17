@@ -15,10 +15,10 @@ router.use(bodyParser.json());
 console.log(process.env.STDSECRET_KEY);
 
 router.post('/stdregister', async (req, res) => {
-    const { name, username, email, phone, Clgname, classandsection, password, confirmpassword } = req.body;
+    const { name, username, email, phone, Clgname, classandsection, rlno,password, confirmpassword } = req.body;
 
     // Validate that all required fields are present
-    if (!name || !username || !email || !phone || !Clgname || !classandsection || !password || !confirmpassword) {
+    if (!name || !username || !email || !phone || !Clgname || !classandsection||!rlno || !password || !confirmpassword) {
         return res.status(400).json({ success: false, error: 'All fields are required' });
     }
 
@@ -30,8 +30,8 @@ router.post('/stdregister', async (req, res) => {
     try {
         // Store the password and confirmpassword in the database
         const result = await client.query(
-            'INSERT INTO stdlog (name, username, email, phone, Clgname, classandsection, password, confirmpassword) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-            [name, username, email, phone, Clgname, classandsection, password, confirmpassword]
+            'INSERT INTO stdlog (name, username, email, phone, Clgname, classandsection, password, confirmpassword) VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9) RETURNING *',
+            [name, username, email, phone, Clgname, classandsection, rlno,password, confirmpassword]
         );
         res.status(201).json({ success: true, user: result.rows[0] });
     } catch (error) {
@@ -57,15 +57,15 @@ router.post('/stdlogin', async (req, res) => {
             const passwordMatch = (password === user.password && password === user.confirmpassword);
             if (passwordMatch) {
                 // Passwords match, generate JWT token
-                const jwtoken = jwt.sign({ id: user.id, username: user.username }, process.env.STDSECRET_KEY, { expiresIn: '1h' });
+                const token = jwt.sign({ id: user.id, username: user.username }, process.env.STDSECRET_KEY, { expiresIn: '1h' });
 
                 // Store token in the database
-                const tokenQuery = 'UPDATE stdlog SET jwtoken = $1 WHERE id = $2';
-                await client.query(tokenQuery, [jwtoken, user.id]);
+                const tokenQuery = 'UPDATE stdlog SET token = $1 WHERE id = $2';
+                await client.query(tokenQuery, [token, user.id]);
 
                 // Set the token in a cookie and send it in the response
-                res.cookie('jwtoken', jwtoken, { httpOnly: true });
-                res.status(200).json({ success: true, token: jwtoken });
+                res.cookie('jwtoken', token, { httpOnly: true });
+                res.status(200).json({ success: true, token: token });
             } else {
                 // Passwords do not match
                 res.status(401).json({ success: false, error: 'Invalid credentials' });
@@ -86,7 +86,7 @@ router.get('/stddetails', middleware, async (req, res) => {
         const userId = req.user.id;
         const result = await client.query('SELECT * FROM stdlog WHERE id = $1', [userId]);
         if (result.rows.length > 0) {
-            const userDetails = result.rows[0];
+            const userDetails  = result.rows[0];
             // Remove sensitive information like password before sending the response
             delete userDetails.password;
             delete userDetails.confirmpassword;
