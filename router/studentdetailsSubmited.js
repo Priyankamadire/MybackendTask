@@ -70,9 +70,6 @@ router.post('/post-marksforstd/:clgname/:name/:assignmentId', authenticateToken,
 });
 
 
-
-
-
 router.get('/submitted-std-details/:assignmentId', async (req, res) => {
     const { assignmentId } = req.params; // Assignment ID
 
@@ -114,15 +111,29 @@ router.get('/submitted-std-details-user/:id/:assignmentId', async (req, res) => 
     }
 });
 
-
-router.post('/postingmarks/:id/:assignmentId', authenticateToken, async (req, res) => {
+router.post('/postingmarks/:rlno/:assignmentId', authenticateToken, async (req, res) => {
     const { assign_marks } = req.body;
-    const { id, assignmentId } = req.params; // Parameters from URL
+    const { rlno, assignmentId } = req.params; // Parameters from URL
 
     try {
-        // Fetch submitted assignment details from the submit_assg table using the id and assignmentId
-        const submissionQuery = 'SELECT * FROM submit_assg WHERE id = $1 AND assignment_id = $2';
-        const submissionResult = await client.query(submissionQuery, [id, assignmentId]);
+        // Check if marks have already been posted for the specified rlno and assignmentId
+        const existingMarksQuery = `
+            SELECT * FROM postmarksfor_students 
+            WHERE rlno = $1 AND assignment_id = $2
+        `;
+        const existingMarksResult = await client.query(existingMarksQuery, [rlno, assignmentId]);
+
+        if (existingMarksResult.rows.length > 0) {
+            return res.status(400).json({ success: false, error: 'Marks have already been posted for this rlno and assignmentId' });
+        }
+
+        // Fetch the submitted assignment details from the submit_assg table for the given rlno and assignmentId
+        const submissionQuery = `
+            SELECT clgname, name, classandsection, assignment_link, assignment_title, assignment_description 
+            FROM submit_assg 
+            WHERE rlno = $1 AND assignment_id = $2
+        `;
+        const submissionResult = await client.query(submissionQuery, [rlno, assignmentId]);
 
         // Check if the assignment details are found
         if (submissionResult.rows.length === 0) {
@@ -131,19 +142,18 @@ router.post('/postingmarks/:id/:assignmentId', authenticateToken, async (req, re
 
         const { clgname, name, classandsection, assignment_link, assignment_title, assignment_description } = submissionResult.rows[0];
 
-        // Insert or update marks in the postmarksfor_students table
+        // Insert marks into the postmarksfor_students table
         const marksQuery = `
             INSERT INTO postmarksfor_students 
-                (clgname, name, classandsection, assignment_link, assignment_id, assignment_title, assignment_description, assign_marks)
+                (clgname, name, classandsection, rlno, assignment_link, assignment_id, assignment_title, assignment_description, assign_marks)
             VALUES 
-                ($1, $2, $3, $4, $5, $6, $7, $8)
-            ON CONFLICT (assignment_id) DO UPDATE 
-                SET assign_marks = EXCLUDED.assign_marks;
+                ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         `;
         const marksValues = [
             clgname, 
             name, 
             classandsection, 
+            rlno,
             assignment_link, 
             assignmentId, 
             assignment_title, 
@@ -161,4 +171,63 @@ router.post('/postingmarks/:id/:assignmentId', authenticateToken, async (req, re
 });
 
 
+router.get('/postedmarks', async (req, res) => {
+    try {
+        // Fetch all assignments from the database
+        const assignmentQuery = 'SELECT * FROM postmarksfor_students';
+        const assignmentResult = await client.query(assignmentQuery);
+        const assignments = assignmentResult.rows;
+  
+        res.status(200).json({ success: true, assignments });
+    } catch (error) {
+        console.error('Error fetching assignments:', error);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+  });
+  router.get('/postedmarksd/:assignment_id', async (req, res) => {
+    const { assignment_id } = req.params;
+
+    try {
+        // Fetch the assignment with the specified assignment_id from the database
+        const assignmentQuery = 'SELECT * FROM postmarksfor_students WHERE assignment_id = $1';
+        const assignmentResult = await client.query(assignmentQuery, [assignment_id]);
+        
+        // Check if the assignment with the specified assignment_id exists
+        if (assignmentResult.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Assignment not found' });
+        }
+
+        // Return the assignment details
+        const assignment = assignmentResult.rows[0];
+        res.status(200).json({ success: true, assignment });
+    } catch (error) {
+        console.error('Error fetching assignment:', error);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+});
+
+router.get('/postedmarksdet/:rlno/:assignment_id', async (req, res) => {
+    const { rlno, assignment_id } = req.params;
+
+    try {
+        // Fetch the assignment with the specified assignment_id and submitted student rlno from the database
+        const assignmentQuery = 'SELECT * FROM postmarksfor_students WHERE assignment_id = $1 AND rlno = $2';
+        const assignmentResult = await client.query(assignmentQuery, [assignment_id, rlno]);
+        
+        // Check if the assignment with the specified assignment_id exists for the submitted student rlno
+        if (assignmentResult.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Assignment not found for the submitted student' });
+        }
+
+        // Return the assignment details
+        const assignment = assignmentResult.rows[0];
+        res.status(200).json({ success: true, assignment });
+    } catch (error) {
+        console.error('Error fetching assignment:', error);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+});
+
+
+ 
 module.exports = router;

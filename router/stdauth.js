@@ -14,11 +14,13 @@ router.use(bodyParser.json());
 
 console.log(process.env.STDSECRET_KEY);
 
+
+
 router.post('/stdregister', async (req, res) => {
-    const { name, username, email, phone, Clgname, classandsection, rlno,password, confirmpassword } = req.body;
+    const { name, username, email, phone, Clgname, classandsection, rlno, password, confirmpassword } = req.body;
 
     // Validate that all required fields are present
-    if (!name || !username || !email || !phone || !Clgname || !classandsection||!rlno || !password || !confirmpassword) {
+    if (!name || !username || !email || !phone || !Clgname || !classandsection || !rlno || !password || !confirmpassword) {
         return res.status(400).json({ success: false, error: 'All fields are required' });
     }
 
@@ -28,10 +30,13 @@ router.post('/stdregister', async (req, res) => {
     }
 
     try {
-        // Store the password and confirmpassword in the database
+        // Hash the password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Store the hashed password in the database
         const result = await client.query(
-            'INSERT INTO stdlog (name, username, email, phone, Clgname, classandsection, password, confirmpassword) VALUES ($1, $2, $3, $4, $5, $6, $7, $8,$9) RETURNING *',
-            [name, username, email, phone, Clgname, classandsection, rlno,password, confirmpassword]
+            'INSERT INTO stdlog (name, username, email, phone, Clgname, classandsection, rlno, password, confirmpassword) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+            [name, username, email, phone, Clgname, classandsection, rlno, hashedPassword, confirmpassword]
         );
         res.status(201).json({ success: true, user: result.rows[0] });
     } catch (error) {
@@ -45,8 +50,8 @@ router.post('/stdregister', async (req, res) => {
 });
 
 
-const middleware = require('../stdauthenticatetoken');
 
+const middleware = require('../stdauthenticatetoken');
 router.post('/stdlogin', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -54,7 +59,7 @@ router.post('/stdlogin', async (req, res) => {
         if (result.rows.length > 0) {
             // User exists, compare hashed password
             const user = result.rows[0];
-            const passwordMatch = (password === user.password && password === user.confirmpassword);
+            const passwordMatch = await bcrypt.compare(password, user.password);
             if (passwordMatch) {
                 // Passwords match, generate JWT token
                 const token = jwt.sign({ id: user.id, username: user.username }, process.env.STDSECRET_KEY, { expiresIn: '1h' });

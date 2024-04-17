@@ -21,9 +21,9 @@ router.post('/submit-assgnm/:id', authenticateToken, async (req, res) => {
         // Extract assignment details
         const { subject, assignment_title, assignment_description } = assignmentResult.rows[0];
 
-        // Extract student details from the token
+        // Extract student details from the token rlno
         const userId = req.user.id;
-        const studentQuery = 'SELECT clgname, name, classandsection FROM stdlog WHERE id = $1';
+        const studentQuery = 'SELECT clgname, name, classandsection, rlno FROM stdlog WHERE id = $1';
         const studentResult = await client.query(studentQuery, [userId]);
 
         // If student details not found, return 404 error
@@ -32,18 +32,18 @@ router.post('/submit-assgnm/:id', authenticateToken, async (req, res) => {
         }
 
         // Extract student's details
-        const { clgname, name, classandsection } = studentResult.rows[0];
+        const { clgname, name, classandsection, rlno } = studentResult.rows[0];
 
         // Extract submission details from request body
         const { assignment_link } = req.body;
 
         // Insert assignment submission into the database
         const submissionQuery = `
-            INSERT INTO submit_assg (clgname, name, subject, assignment_title, assignment_description, classandsection, assignment_link, assignment_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            INSERT INTO submit_assg (clgname, name, subject, rlno, assignment_title, assignment_description, classandsection, assignment_link, assignment_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *;
         `;
-        const submissionValues = [clgname, name, subject, assignment_title, assignment_description, classandsection, assignment_link, assignmentId];
+        const submissionValues = [clgname, name, subject, rlno, assignment_title, assignment_description, classandsection, assignment_link, assignmentId];
         const submissionResult = await client.query(submissionQuery, submissionValues);
 
         // Return success response with the submitted assignment details
