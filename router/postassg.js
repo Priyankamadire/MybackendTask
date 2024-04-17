@@ -62,7 +62,21 @@ router.get('/assignments', authenticateToken, async (req, res) => {
       res.status(500).json({ success: false, error: 'Internal Server Error' });
   }
 });
-
+router.delete('/deleteass/:id', authenticateToken, async (req, res) => {
+    const assignmentId = req.params.id; // Get the assignment ID from the request parameters
+    
+    try {
+        // Delete the assignment  from the database based on its ID
+        const deleteQuery = 'DELETE FROM postassg WHERE id = $1';
+        await client.query(deleteQuery, [assignmentId]);
+        
+        res.status(200).json({ success: true, message: 'Assignment deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting assignment:', error);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+});
+ 
 router.get('/postedassignments', async (req, res) => {
   try {
       // Fetch all assignments from the database
