@@ -63,6 +63,19 @@ router.get('/assignments', authenticateToken, async (req, res) => {
   }
 });
 
+router.get('/postedassignments', async (req, res) => {
+  try {
+      // Fetch all assignments from the database
+      const assignmentQuery = 'SELECT * FROM postassg';
+      const assignmentResult = await client.query(assignmentQuery);
+      const assignments = assignmentResult.rows;
+
+      res.status(200).json({ success: true, assignments });
+  } catch (error) {
+      console.error('Error fetching assignments:', error);
+      res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
 
 
 
