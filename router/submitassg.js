@@ -2,11 +2,18 @@ const express = require('express');
 const router = express.Router();
 const client = require('../conn');
 const authenticateToken = require('../stdauthenticatetoken');
+const cors = require('cors');
+const corsOptions = {
+    origin: true, 
+    credentials: true,  
+  };
+  router.use(cors(corsOptions));
 
-// Route to submit an assignment
+
+// Route to submit an assignmen 
 router.post('/submit-assgnm/:id', authenticateToken, async (req, res) => {
     try {
-        // Extract assignment ID from request parameters
+        // Extract assignment ID from request parameters    
         const assignmentId = req.params.id;
 
         // Check if the provided assignment ID exists in the postassg table
@@ -53,6 +60,21 @@ router.post('/submit-assgnm/:id', authenticateToken, async (req, res) => {
         console.error('Error submitting assignment:', error.stack);
         res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
-});
+});   
+router.get('/getappliedstd', async (req, res) => {
+    try {
+      // Fetch all submitted assignments from the database
+      const submissionQuery = 'SELECT * FROM submit_assg';
+      const submissionResult = await client.query(submissionQuery);
+      const submissions = submissionResult.rows;
+  
+      res.status(200).json({ success: true, submissions });
+    } catch (error) {
+      console.error('Error fetching submitted assignments:', error);
+      res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+  });
 
 module.exports = router;
+   
+

@@ -9,7 +9,11 @@ dotenv.config({ path: '../config.env' });
 const router = express.Router();
 const cookieParser = require('cookie-parser');
 router.use(cookieParser());
-
+const cors = require('cors');
+const corsOptions = {
+    origin: true, 
+    credentials: true,  
+  };
 router.use(bodyParser.json());
 
 console.log(process.env.STDSECRET_KEY);
@@ -85,6 +89,10 @@ router.post('/stdlogin', async (req, res) => {
     }
 });
 
+router.get('/clglog-out', (req, res) => {
+    res.clearCookie('jwtoken', { httpOnly: true }); // Clear the token cookie
+    res.status(200).send("User logged out successfully");
+});
 
 router.get('/stddetails', middleware, async (req, res) => {
     try {

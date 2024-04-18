@@ -13,7 +13,14 @@ const authenticateToken = require('../authenticateToken');
 router.use(bodyParser.json());
 client.connect();
 console.log(process.env.SECRET_KEY);
-
+const cors = require('cors');
+const corsOptions = {
+    origin: true, 
+    credentials: true,  
+  };
+  
+  // Apply CORS middleware with options
+  router.use(cors(corsOptions));
 const bcrypt = require('bcrypt');
 
 router.post('/register', async (req, res) => {
@@ -62,14 +69,13 @@ router.post('/login', async (req, res) => {
                 // Passwords match, generate JWT token
                 const token = jwt.sign({ id: user.id, username: user.username }, process.env.SECRET_KEY, { expiresIn: '1h' });
                 
-                // Update the user's tokens in the database by appending the new token
-                const updatedTokens = user.tokens ? [...user.tokens, token] : [token];
-                const updateResult = await client.query('UPDATE users SET tokens = $1 WHERE id = $2', [updatedTokens, user.id]);
-                console.log('Update result:', updateResult.rows);
+                // Store the current token in the user's database record
+                await client.query('UPDATE users SET token = $1 WHERE id = $2', [token, user.id]);
 
                 // Set the token in a cookie and send it in the response
                 res.cookie('token', token, { httpOnly: true });
                 res.status(200).json({ success: true, token: token });
+             
             } else {
                 // Passwords do not match
                 res.status(401).json({ success: false, error: 'Invalid credentials' });
@@ -79,13 +85,21 @@ router.post('/login', async (req, res) => {
             res.status(401).json({ success: false, error: 'Invalid credentials' });
         }
     } catch (error) {
-        console.error('Error logging in:', error.stack);
+        console.error('Error logging in:', error);
         res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 });
 
 
 
+
+router.get('/log-out', (req, res) => {
+    res.clearCookie('token', { httpOnly: true }); // Clear the token cookie
+    res.status(200).send("User logged out successfully");
+});
+
+
+  
 
 
 
@@ -99,6 +113,7 @@ router.get('/mydetails', authenticateToken, async (req, res) => {
             delete userDetails.password;
             delete userDetails.confirmpassword;
             res.status(200).json({ success: true, user: userDetails });
+            // console.log(userDetails);
         } else {
             res.status(404).json({ success: false, error: 'User not found' });
         }
@@ -108,5 +123,5 @@ router.get('/mydetails', authenticateToken, async (req, res) => {
     }
 });
 
-
+   
 module.exports = router;

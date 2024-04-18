@@ -2,8 +2,12 @@ const express = require('express');
 const router = express.Router();
 const authenticateToken = require('../authenticateToken'); // Assuming you have authentication middleware
 const client = require('../conn'); // Assuming you have a connection to your database
-
-// Route to fetch submitted assignments and post marks
+const cors = require('cors');
+const corsOptions = {
+    origin: true, 
+    credentials: true,  
+  };
+// Route to fetch submitted assignments a   n ks
 router.post('/post-marks/:assignmentId', authenticateToken, async (req, res) => {
     const { assign_marks } = req.body;
     const { assignmentId } = req.params; // Assignment ID
@@ -69,8 +73,9 @@ router.post('/post-marksforstd/:clgname/:name/:assignmentId', authenticateToken,
     }
 });
 
+   
 
-router.get('/submitted-std-details/:assignmentId', async (req, res) => {
+router.get('/submitted-std-details/:assignmentId',authenticateToken, async (req, res) => {
     const { assignmentId } = req.params; // Assignment ID
 
     try {
@@ -90,6 +95,28 @@ router.get('/submitted-std-details/:assignmentId', async (req, res) => {
         res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 });
+router.get('/submitted-std-detailsrlno/:rlno/:assignmentId', authenticateToken, async (req, res) => {
+    const { rlno, assignmentId } = req.params; // Roll number and Assignment ID
+
+    try {
+        // Fetch submitted student details for the specified roll number and assignment ID
+        const query = 'SELECT * FROM submit_assg WHERE rlno = $1 AND assignment_id = $2';
+        const result = await client.query(query, [rlno, assignmentId]);
+
+        // Check if any submissions were found
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'No submissions found for the specified roll number and assignment' });
+        }
+
+        // Return the submitted student details
+        res.status(200).json({ success: true, submissions: result.rows });
+    } catch (error) {
+        console.error('Error fetching submitted student details:', error);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+});
+
+
 router.get('/submitted-std-details-user/:id/:assignmentId', async (req, res) => {
     const { id, assignmentId } = req.params; // Primary key and Assignment ID
 
@@ -115,8 +142,8 @@ router.post('/postingmarks/:rlno/:assignmentId', authenticateToken, async (req, 
     const { assign_marks } = req.body;
     const { rlno, assignmentId } = req.params; // Parameters from URL
 
-    try {
-        // Check if marks have already been posted for the specified rlno and assignmentId
+    try {  
+        // Check if marks have    been posted for the specified rlno and assignmentId
         const existingMarksQuery = `
             SELECT * FROM postmarksfor_students 
             WHERE rlno = $1 AND assignment_id = $2
@@ -188,28 +215,29 @@ router.get('/postedmarks', async (req, res) => {
     const { assignment_id } = req.params;
 
     try {
-        // Fetch the assignment with the specified assignment_id from the database
-        const assignmentQuery = 'SELECT * FROM postmarksfor_students WHERE assignment_id = $1';
-        const assignmentResult = await client.query(assignmentQuery, [assignment_id]);
+        // Fetch all students associated with the specified assignment_id from the database
+        const studentsQuery = 'SELECT * FROM postmarksfor_students WHERE assignment_id = $1';
+        const studentsResult = await client.query(studentsQuery, [assignment_id]);
         
-        // Check if the assignment with the specified assignment_id exists
-        if (assignmentResult.rows.length === 0) {
-            return res.status(404).json({ success: false, error: 'Assignment not found' });
+        // Check if any students are associated with the specified assignment_id
+        if (studentsResult.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'No students found for this assignment' });
         }
 
-        // Return the assignment details
-        const assignment = assignmentResult.rows[0];
-        res.status(200).json({ success: true, assignment });
+        // Return the list of students
+        const submissions = studentsResult.rows;
+        res.status(200).json({ success: true, submissions });
     } catch (error) {
-        console.error('Error fetching assignment:', error);
+        console.error('Error fetching students:', error);
         res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 });
 
-router.get('/postedmarksdet/:rlno/:assignment_id', async (req, res) => {
+
+router.get('/postedmarksdet/:rlno/:assignment_id',  async (req, res) => {
     const { rlno, assignment_id } = req.params;
 
-    try {
+    try {     
         // Fetch the assignment with the specified assignment_id and submitted student rlno from the database
         const assignmentQuery = 'SELECT * FROM postmarksfor_students WHERE assignment_id = $1 AND rlno = $2';
         const assignmentResult = await client.query(assignmentQuery, [assignment_id, rlno]);
@@ -227,7 +255,30 @@ router.get('/postedmarksdet/:rlno/:assignment_id', async (req, res) => {
         res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 });
+    
+router.get('/postedmarksdbyrl/:rlno', async (req, res) => {
+    const { rlno } = req.params;
+    
+    try {
+        // Fetch all students associated with the specified rlno from the database
+        const studentsQuery = 'SELECT * FROM postmarksfor_students WHERE rlno = $1';
+        const studentsResult = await client.query(studentsQuery, [rlno]);
+        
+        // Check if any students are associated with the specified rlno
+        if (studentsResult.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'No students found for this rlno' });
+        }
+
+        // Return the list of students
+        const submissions = studentsResult.rows;
+        res.status(200).json({ success: true, submissions });
+    } catch (error) {
+        console.error('Error fetching students:', error);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+});
 
 
- 
+   
+    
 module.exports = router;

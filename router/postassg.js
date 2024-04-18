@@ -6,19 +6,28 @@ const jwt = require('jsonwebtoken');
 const router = express.Router();
 const cookieParser = require('cookie-parser');
 const authenticateToken = require('../authenticateToken');
+const middleware = require('../stdauthenticatetoken')
 dotenv.config({ path: '../config.env' });
 
 router.use(cookieParser());
 router.use(bodyParser.json());
+const cors = require('cors');
+const corsOptions = {
+    origin: true, 
+    credentials: true,  
+  };
+  
+  // Apply CORS middleware with options
+  router.use(cors(corsOptions));
+console.log(process.env.SECRET_KEY); 
 
-console.log(process.env.SECRET_KEY);
 
 router.post('/post-assignment', authenticateToken, async (req, res) => {
     const { assignment_title, assignment_description, due_date, assigned_date, classandsection, attachments_link, marks, total_students } = req.body;
     const userId = req.user.id; // Get user ID from decoded token
   
     try {
-      // Fetch user details from the database based on user ID
+      // Fetch user details from the database based on user ID 
       const userQuery = 'SELECT clgname, name, subject FROM users WHERE id = $1';
       const userResult = await client.query(userQuery, [userId]);
       const { clgname, name, subject } = userResult.rows[0];
@@ -90,9 +99,77 @@ router.get('/postedassignments', async (req, res) => {
       res.status(500).json({ success: false, error: 'Internal Server Error' });
   }
 });
+router.get('/postedassignmentswithid/:id', async (req, res) => {
+    const assignmentId = req.params.id;
+  
+    try {
+      // Fetch the assignment from the database using its primary key
+      const assignmentQuery = 'SELECT * FROM postassg WHERE id = $1';
+      const assignmentResult = await client.query(assignmentQuery, [assignmentId]);
+  
+      // Check if the assignment exists
+      if (assignmentResult.rows.length === 0) {
+        return res.status(404).json({ success: false, error: 'Assignment not found' });
+      }
+     
+      const assignment = assignmentResult.rows[0];
+      res.status(200).json({ success: true, assignment });
+    } catch (error) {
+      console.error('Error fetching assignment:', error);
+      res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+  });   
 
 
 
+  router.get('/postedassignmentsbyname/:name', authenticateToken, async (req, res) => {
+    const { name } = req.params;
+    try {
+        // Fetch all assignments posted by the user with the specified name from the database
+        const assignmentQuery = 'SELECT * FROM postassg WHERE name = $1';
+        const assignmentResult = await client.query(assignmentQuery, [name]);
+        const assignments = assignmentResult.rows;
+
+        res.status(200).json({ success: true, assignments });
+    } catch (error) {
+        console.error('Error fetching assignments:', error);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+});
+
+
+   
+router.get('/postedassignmentsofclg/:clgname', async (req, res) => {
+    const { clgname } = req.params;
+  
+    try {
+      // Fetch assignments for the specified college from the database
+      const assignmentQuery = 'SELECT * FROM postassg WHERE clgname = $1';
+      const assignmentResult = await client.query(assignmentQuery, [clgname]);
+      const assignments = assignmentResult.rows;
+  
+      res.status(200).json({ success: true, assignments });
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+      res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+  });
+     
+  router.get('/postedassignmentsofclgsd/:clgname', middleware,async (req, res) => {
+    const { clgname } = req.params;
+  
+    try {
+      // Fetch assignments for thecified college from the database
+      const assignmentQuery = 'SELECT * FROM postassg WHERE clgname = $1';
+      const assignmentResult = await client.query(assignmentQuery, [clgname]);
+      const assignments = assignmentResult.rows;
+  
+      res.status(200).json({ success: true, assignments });
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+      res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+  });   
 
 router.patch('/update-due-date/:id', authenticateToken, async (req, res) => {
   const { due_date } = req.body;
@@ -258,6 +335,5 @@ router.patch('/update-total-students/:id', authenticateToken, async (req, res) =
       res.status(500).json({ success: false, error: 'Internal Server Error' });
   }
 });
-
-  
+     
 module.exports = router;
