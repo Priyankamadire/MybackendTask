@@ -73,7 +73,9 @@ router.post('/stdlogin', async (req, res) => {
                 await client.query(tokenQuery, [token, user.id]);
 
                 // Set the token in a cookie and send it in the response
-                res.cookie('jwtoken', token, { httpOnly: true });
+                res.cookie('jwtoken', token, {   httpOnly: true,
+                    sameSite: app.get("env") === "development" ? true : "none",
+                    secure: app.get("env") === "development" ? false : true, });
                 res.status(200).json({ success: true, token: token });
             } else {
                 // Passwords do not match

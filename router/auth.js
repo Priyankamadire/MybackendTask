@@ -73,7 +73,9 @@ router.post('/login', async (req, res) => {
                 await client.query('UPDATE users SET token = $1 WHERE id = $2', [token, user.id]);
 
                 // Set the token in a cookie and send it in the response
-                res.cookie('token', token, { httpOnly: true });
+                res.cookie('token', token, {   httpOnly: true,
+                    sameSite: app.get("env") === "development" ? true : "none",
+                    secure: app.get("env") === "development" ? false : true,});
                 res.status(200).json({ success: true, token: token });
              
             } else {
