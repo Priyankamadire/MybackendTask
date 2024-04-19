@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const express = require('express');
 const bodyParser = require('body-parser');
 dotenv.config({ path: '../config.env' });
+const app = express();
 const router = express.Router();
 const cookieParser = require('cookie-parser');
 router.use(cookieParser());
@@ -18,8 +19,6 @@ const corsOptions = {
     origin: true, 
     credentials: true,  
   };
-  
-  // Apply CORS middleware with options
   router.use(cors(corsOptions));
 const bcrypt = require('bcrypt');
 
@@ -73,7 +72,9 @@ router.post('/login', async (req, res) => {
                 await client.query('UPDATE users SET token = $1 WHERE id = $2', [token, user.id]);
 
                 // Set the token in a cookie and send it in the response
-                res.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'strict'});
+                res.cookie('token', token, {   httpOnly: true,
+                    sameSite: app.get("env") === "development" ? true : "none",
+                    secure: app.get("env") === "development" ? false : true,});
                 res.status(200).json({ success: true, token: token });
              
             } else {
