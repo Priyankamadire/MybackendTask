@@ -73,9 +73,7 @@ router.post('/stdlogin', async (req, res) => {
                 await client.query(tokenQuery, [token, user.id]);
 
                 // Set the token in a cookie and send it in the response
-                res.cookie('jwtoken', token, {   httpOnly: true,
-                    sameSite: app.get("env") === "development" ? true : "none",
-                    secure: app.get("env") === "development" ? false : true, });
+                res.cookie('jwtoken', token, { httpOnly: true, secure: true, sameSite: 'strict' });
                 res.status(200).json({ success: true, token: token });
             } else {
                 // Passwords do not match
@@ -90,6 +88,7 @@ router.post('/stdlogin', async (req, res) => {
         res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 });
+
 
 router.get('/clglog-out', (req, res) => {
     res.clearCookie('jwtoken', { httpOnly: true }); // Clear the token cookie
