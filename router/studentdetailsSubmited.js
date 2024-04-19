@@ -145,7 +145,7 @@ router.post('/postingmarks/:rlno/:assignmentId', authenticateToken, async (req, 
     try {  
         // Check if marks have    been posted for the specified rlno and assignmentId
         const existingMarksQuery = `
-            SELECT * FROM postmarksfor_students 
+            SELECT * FROM postmarksfor_students    
             WHERE rlno = $1 AND assignment_id = $2
         `;
         const existingMarksResult = await client.query(existingMarksQuery, [rlno, assignmentId]);
@@ -255,7 +255,7 @@ router.get('/postedmarksdet/:rlno/:assignment_id',  async (req, res) => {
         res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 });
-    
+      
 router.get('/postedmarksdbyrl/:rlno', async (req, res) => {
     const { rlno } = req.params;
     

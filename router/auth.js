@@ -11,7 +11,7 @@ router.use(cookieParser());
 const authenticateToken = require('../authenticateToken');
 
 router.use(bodyParser.json());
-client.connect();
+// client.connect();
 console.log(process.env.SECRET_KEY);
 const cors = require('cors');
 const corsOptions = {
